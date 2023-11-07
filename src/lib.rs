@@ -13,6 +13,7 @@
 #![forbid(unsafe_code)]
 
 mod painter;
+use glium::glutin::surface::WindowSurface;
 pub use painter::Painter;
 
 pub use egui_winit;
@@ -33,12 +34,16 @@ pub struct EguiGlium {
 }
 
 impl EguiGlium {
-    pub fn new<E>(display: &glium::Display, event_loop: &EventLoopWindowTarget<E>) -> Self {
+    pub fn new<E>(
+        display: &glium::Display<WindowSurface>,
+        window: &winit::window::Window,
+        event_loop: &EventLoopWindowTarget<E>,
+    ) -> Self {
         let painter = crate::Painter::new(display);
 
         let mut egui_winit = egui_winit::State::new(event_loop);
         egui_winit.set_max_texture_side(painter.max_texture_side());
-        let pixels_per_point = display.gl_window().window().scale_factor() as f32;
+        let pixels_per_point = window.scale_factor() as f32;
         egui_winit.set_pixels_per_point(pixels_per_point);
 
         Self {
@@ -50,7 +55,7 @@ impl EguiGlium {
         }
     }
 
-    pub fn on_event(&mut self, event: &glium::glutin::event::WindowEvent<'_>) -> EventResponse {
+    pub fn on_event(&mut self, event: &winit::event::WindowEvent<'_>) -> EventResponse {
         self.egui_winit.on_event(&self.egui_ctx, event)
     }
 
@@ -59,12 +64,10 @@ impl EguiGlium {
     /// Call [`Self::paint`] later to paint.
     pub fn run(
         &mut self,
-        display: &glium::Display,
+        window: &winit::window::Window,
         run_ui: impl FnMut(&egui::Context),
     ) -> std::time::Duration {
-        let raw_input = self
-            .egui_winit
-            .take_egui_input(display.gl_window().window());
+        let raw_input = self.egui_winit.take_egui_input(window);
         let egui::FullOutput {
             platform_output,
             repaint_after,
@@ -72,11 +75,8 @@ impl EguiGlium {
             shapes,
         } = self.egui_ctx.run(raw_input, run_ui);
 
-        self.egui_winit.handle_platform_output(
-            display.gl_window().window(),
-            &self.egui_ctx,
-            platform_output,
-        );
+        self.egui_winit
+            .handle_platform_output(window, &self.egui_ctx, platform_output);
 
         self.shapes = shapes;
         self.textures_delta.append(textures_delta);
@@ -85,7 +85,11 @@ impl EguiGlium {
     }
 
     /// Paint the results of the last call to [`Self::run`].
-    pub fn paint<T: glium::Surface>(&mut self, display: &glium::Display, target: &mut T) {
+    pub fn paint<T: glium::Surface>(
+        &mut self,
+        display: &glium::Display<WindowSurface>,
+        target: &mut T,
+    ) {
         let shapes = std::mem::take(&mut self.shapes);
         let textures_delta = std::mem::take(&mut self.textures_delta);
         let clipped_primitives = self.egui_ctx.tessellate(shapes);

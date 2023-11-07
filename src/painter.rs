@@ -5,6 +5,7 @@ use egui::{
     epaint::{textures::TextureFilter, Primitive},
     TextureOptions,
 };
+use glium::glutin::surface::WindowSurface;
 
 use {
     egui::{emath::Rect, epaint::Mesh},
@@ -114,7 +115,7 @@ impl Painter {
 
     pub fn paint_and_update_textures<T: glium::Surface>(
         &mut self,
-        display: &glium::Display,
+        display: &glium::Display<WindowSurface>,
         target: &mut T,
         pixels_per_point: f32,
         clipped_primitives: &[egui::ClippedPrimitive],
@@ -136,7 +137,7 @@ impl Painter {
     /// and `target.finish()` after this.
     pub fn paint_primitives<T: glium::Surface>(
         &mut self,
-        display: &glium::Display,
+        display: &glium::Display<WindowSurface>,
         target: &mut T,
         pixels_per_point: f32,
         clipped_primitives: &[egui::ClippedPrimitive],
@@ -161,7 +162,7 @@ impl Painter {
     fn paint_mesh<T: glium::Surface>(
         &mut self,
         target: &mut T,
-        display: &glium::Display,
+        display: &glium::Display<WindowSurface>,
         pixels_per_point: f32,
         clip_rect: &Rect,
         mesh: &Mesh,
