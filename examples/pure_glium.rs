@@ -2,25 +2,27 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+use egui::ViewportId;
 use glium::{backend::glutin::SimpleWindowBuilder, glutin::surface::WindowSurface};
 use winit::{
     event,
-    event_loop::{self, EventLoop, EventLoopBuilder},
+    event_loop::{EventLoop, EventLoopBuilder},
 };
 
 fn main() {
-    let event_loop = EventLoopBuilder::with_user_event().build();
+    let event_loop = EventLoopBuilder::with_user_event().build().unwrap();
     let (window, display) = create_display(&event_loop);
 
-    let mut egui_glium = egui_glium::EguiGlium::new(&display, &window, &event_loop);
+    let mut egui_glium =
+        egui_glium::EguiGlium::new(ViewportId::ROOT, &display, &window, &event_loop);
 
     let mut color_test = egui_demo_lib::ColorTest::default();
 
-    event_loop.run(move |event, _, control_flow| {
+    let result = event_loop.run(move |event, target| {
         let mut redraw = || {
             let mut quit = false;
 
-            let repaint_after = egui_glium.run(&window, |egui_ctx| {
+            egui_glium.run(&window, |egui_ctx| {
                 egui::SidePanel::left("my_side_panel").show(egui_ctx, |ui| {
                     ui.heading("Hello World!");
                     if ui.button("Quit").clicked() {
@@ -35,18 +37,9 @@ fn main() {
                 });
             });
 
-            *control_flow = if quit {
-                event_loop::ControlFlow::Exit
-            } else if repaint_after.is_zero() {
-                window.request_redraw();
-                event_loop::ControlFlow::Poll
-            } else if let Some(repaint_after_instant) =
-                std::time::Instant::now().checked_add(repaint_after)
-            {
-                event_loop::ControlFlow::WaitUntil(repaint_after_instant)
-            } else {
-                event_loop::ControlFlow::Wait
-            };
+            if quit {
+                target.exit()
+            }
 
             {
                 use glium::Surface as _;
@@ -66,25 +59,18 @@ fn main() {
         };
 
         match event {
-            // Platform-dependent event handlers to workaround a winit bug
-            // See: https://github.com/rust-windowing/winit/issues/987
-            // See: https://github.com/rust-windowing/winit/issues/1619
-            event::Event::RedrawEventsCleared if cfg!(target_os = "windows") => redraw(),
-            event::Event::RedrawRequested(_) if !cfg!(target_os = "windows") => redraw(),
-
             event::Event::WindowEvent { event, .. } => {
                 use event::WindowEvent;
                 match &event {
-                    WindowEvent::CloseRequested | WindowEvent::Destroyed => {
-                        *control_flow = winit::event_loop::ControlFlow::Exit;
-                    }
+                    WindowEvent::CloseRequested | WindowEvent::Destroyed => target.exit(),
                     WindowEvent::Resized(new_size) => {
                         display.resize((*new_size).into());
                     }
+                    WindowEvent::RedrawRequested => redraw(),
                     _ => {}
                 }
 
-                let event_response = egui_glium.on_event(&event);
+                let event_response = egui_glium.on_event(&window, &event);
 
                 if event_response.repaint {
                     window.request_redraw();
@@ -96,6 +82,7 @@ fn main() {
             _ => (),
         }
     });
+    result.unwrap()
 }
 
 fn create_display(
