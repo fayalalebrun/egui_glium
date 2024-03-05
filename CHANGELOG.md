@@ -6,8 +6,13 @@ Changes since the last release can be found by running the `scripts/generate_cha
 
 
 ## Unreleased
-* Remove the `screen_reader` feature ([#2669](https://github.com/emilk/egui/pull/2669)).
 
+## 0.26.2 - 2024-05-03
+* Remove the `screen_reader` feature ([#2669](https://github.com/emilk/egui/pull/2669)).
+* uses of `egui_glium.egui_ctx` are now egui_glium.egui_ctx()
+* The `EguiGlium::new` function has a `ViewportId argument` that you can normally just set to `ViewportId::ROOT`, see
+[https://github.com/emilk/egui/pull/3172](Multiple viewports/windows emilk/egui#3172)
+* `EguiGlium::run` no longer returns repaint_requested as repaints are handled through another mechanism now. (Not sure exactly how it is supposed to work...) See [https://github.com/emilk/egui/pull/3172](Multiple viewports/windows emilk/egui#3172)
 
 ## 0.20.1 - 2022-12-11
 * Fix [docs.rs](https://docs.rs/egui_glium) build ([#2420](https://github.com/emilk/egui/pull/2420)).
