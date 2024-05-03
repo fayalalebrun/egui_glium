@@ -58,7 +58,7 @@ impl Painter {
             .get_context()
             .is_glsl_version_supported(&glium::Version(glium::Api::Gl, 1, 4))
         {
-            eprintln!("Using GL 1.4");
+            log::info!("Using GL 1.4");
             create_program(
                 facade,
                 include_str!("shader/vertex_140.glsl"),
@@ -68,7 +68,7 @@ impl Painter {
             .get_context()
             .is_glsl_version_supported(&glium::Version(glium::Api::Gl, 1, 2))
         {
-            eprintln!("Using GL 1.2");
+            log::info!("Using GL 1.2");
             create_program(
                 facade,
                 include_str!("shader/vertex_120.glsl"),
@@ -78,7 +78,7 @@ impl Painter {
             .get_context()
             .is_glsl_version_supported(&glium::Version(glium::Api::GlEs, 3, 0))
         {
-            eprintln!("Using GL ES 3.0");
+            log::info!("Using GL ES 3.0");
             create_program(
                 facade,
                 include_str!("shader/vertex_300es.glsl"),
@@ -88,7 +88,7 @@ impl Painter {
             .get_context()
             .is_glsl_version_supported(&glium::Version(glium::Api::GlEs, 1, 0))
         {
-            eprintln!("Using GL ES 1.0");
+            log::info!("Using GL ES 1.0");
             create_program(
                 facade,
                 include_str!("shader/vertex_100es.glsl"),
