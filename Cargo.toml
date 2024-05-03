@@ -42,6 +42,7 @@ ahash = { version = "0.8.1", default-features = false, features = [
 bytemuck = "1.7"
 glium = "0.34"
 winit = "0.29"
+log = "0.4.21"
 
 #! ### Optional dependencies
 ## Enable this when generating docs.
