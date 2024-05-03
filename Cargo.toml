@@ -1,10 +1,10 @@
 [package]
 name = "egui_glium"
-version = "0.26.2"
+version = "0.26.3"
 authors = ["Emil Ernerfeldt <emil.ernerfeldt@gmail.com>"]
 description = "Bindings for using egui natively using the glium library"
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.72"
 homepage = "https://github.com/fayalalebrun/egui_glium"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
