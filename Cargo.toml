@@ -29,11 +29,11 @@ links = ["egui-winit/links"]
 
 
 [dependencies]
-egui = { version = "0.26.2", default-features = false, features = [
+egui = { version = "0.28.1", default-features = false, features = [
   "bytemuck",
   "default_fonts"
 ] }
-egui-winit = { version = "0.26.2", default-features = false }
+egui-winit = { version = "0.28.1", default-features = false }
 
 ahash = { version = "0.8.1", default-features = false, features = [
   "no-rng", # we don't need DOS-protection, so we let users opt-in to it instead
