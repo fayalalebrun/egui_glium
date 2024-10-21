@@ -1,11 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+use egui_winit::{egui, winit};
 use egui::{load::SizedTexture, ViewportId};
 use glium::{backend::glutin::SimpleWindowBuilder, glutin::surface::WindowSurface};
-use winit::event_loop::{EventLoop, EventLoopBuilder};
+use winit::event_loop::EventLoop;
 
 fn main() {
-    let event_loop = EventLoopBuilder::with_user_event().build().unwrap();
+    let event_loop = EventLoop::new().unwrap();
     let (window, display) = create_display(&event_loop);
 
     let mut egui_glium =
@@ -25,6 +26,7 @@ fn main() {
     // Setup button image size for reasonable image size for button container.
     let button_image_size = egui::vec2(32_f32, 32_f32);
 
+    #[allow(deprecated)]
     let result = event_loop.run(move |event, target| {
         let mut redraw = || {
             let mut quit = false;
@@ -102,7 +104,7 @@ fn create_display(
     event_loop: &EventLoop<()>,
 ) -> (winit::window::Window, glium::Display<WindowSurface>) {
     SimpleWindowBuilder::new()
-        .set_window_builder(winit::window::WindowBuilder::new().with_resizable(true))
+        .set_window_builder(winit::window::WindowAttributes::default().with_resizable(true))
         .with_inner_size(800, 600)
         .with_title("egui_glium example")
         .build(event_loop)
