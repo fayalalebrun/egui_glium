@@ -2,12 +2,11 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use crate::event::WindowEvent;
 use egui::ViewportId;
 use glium::{backend::glutin::SimpleWindowBuilder, glutin::surface::WindowSurface};
 use winit::{
     application::ApplicationHandler,
-    event::{self, StartCause},
+    event::{StartCause, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
     window::{Window, WindowId},
 };
@@ -101,7 +100,7 @@ impl ApplicationHandler for App {
             }
         };
 
-        use event::WindowEvent;
+        use winit::event::WindowEvent;
         match &event {
             WindowEvent::CloseRequested | WindowEvent::Destroyed => event_loop.exit(),
             WindowEvent::Resized(new_size) => {
