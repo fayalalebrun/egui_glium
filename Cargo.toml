@@ -29,19 +29,19 @@ links = ["egui-winit/links"]
 
 
 [dependencies]
-egui = { version = "0.26.2", default-features = false, features = [
+egui = { version = "0.29", default-features = false, features = [
   "bytemuck",
   "default_fonts"
 ] }
-egui-winit = { version = "0.26.2", default-features = false }
+egui-winit = { version = "0.29", default-features = false }
 
 ahash = { version = "0.8.1", default-features = false, features = [
   "no-rng", # we don't need DOS-protection, so we let users opt-in to it instead
   "std",
 ] }
 bytemuck = "1.7"
-glium = "0.34"
-winit = "0.29"
+glium = "0.36"
+winit = "0.30"
 log = "0.4.21"
 
 #! ### Optional dependencies
@@ -50,5 +50,5 @@ document-features = { version = "0.2", optional = true }
 
 
 [dev-dependencies]
-egui_demo_lib = { version = "0.26.2", default-features = false }
+egui_demo_lib = { version = "0.29", default-features = false }
 image = { version = "0.24", default-features = false, features = ["png"] }
