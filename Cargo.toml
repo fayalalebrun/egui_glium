@@ -43,6 +43,7 @@ bytemuck = "1.7"
 glium = "0.36"
 winit = "0.30"
 log = "0.4.21"
+raw-window-handle = "0.6"
 
 #! ### Optional dependencies
 ## Enable this when generating docs.

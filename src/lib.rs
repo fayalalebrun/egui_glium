@@ -15,10 +15,9 @@
 mod painter;
 use glium::glutin::surface::WindowSurface;
 pub use painter::Painter;
+use raw_window_handle::HasDisplayHandle;
 
 pub use egui_winit;
-
-use egui_winit::winit::event_loop::ActiveEventLoop;
 pub use egui_winit::EventResponse;
 
 // ----------------------------------------------------------------------------
@@ -37,7 +36,7 @@ impl EguiGlium {
         viewport_id: egui::ViewportId,
         display: &glium::Display<WindowSurface>,
         window: &winit::window::Window,
-        event_loop: &ActiveEventLoop,
+        event_loop: &dyn HasDisplayHandle,
     ) -> Self {
         let painter = crate::Painter::new(display);
 
