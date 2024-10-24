@@ -16,13 +16,12 @@ fn main() {
 
     let (window, display) = create_display(&event_loop);
 
-    let egui_glium_instance =
-        egui_glium::EguiGlium::new(ViewportId::ROOT, &display, &window, &event_loop);
+    let egui_glium = egui_glium::EguiGlium::new(ViewportId::ROOT, &display, &window, &event_loop);
 
     let color_test = egui_demo_lib::ColorTest::default();
 
     let mut app = App {
-        egui_glium_instance,
+        egui_glium,
         window,
         display,
         color_test,
@@ -33,7 +32,7 @@ fn main() {
 }
 
 struct App {
-    egui_glium_instance: egui_glium::EguiGlium,
+    egui_glium: egui_glium::EguiGlium,
     window: winit::window::Window,
     display: glium::Display<WindowSurface>,
     color_test: egui_demo_lib::ColorTest,
@@ -46,7 +45,7 @@ impl ApplicationHandler for App {
         let mut redraw = || {
             let mut quit = false;
 
-            self.egui_glium_instance.run(&self.window, |egui_ctx| {
+            self.egui_glium.run(&self.window, |egui_ctx| {
                 egui::SidePanel::left("my_side_panel").show(egui_ctx, |ui| {
                     ui.heading("Hello World!");
                     if ui.button("Quit").clicked() {
@@ -74,7 +73,7 @@ impl ApplicationHandler for App {
 
                 // draw things behind egui here
 
-                self.egui_glium_instance.paint(&self.display, &mut target);
+                self.egui_glium.paint(&self.display, &mut target);
 
                 // draw things on top of egui here
 
@@ -92,7 +91,7 @@ impl ApplicationHandler for App {
             _ => {}
         }
 
-        let event_response = self.egui_glium_instance.on_event(&self.window, &event);
+        let event_response = self.egui_glium.on_event(&self.window, &event);
 
         if event_response.repaint {
             self.window.request_redraw();

@@ -17,7 +17,7 @@ fn main() {
 
     let (window, display) = create_display(&event_loop);
 
-    let mut egui_glium_instance =
+    let mut egui_glium =
         egui_glium::EguiGlium::new(ViewportId::ROOT, &display, &window, &event_loop);
 
     let png_data = include_bytes!("rust-logo-256x256.png");
@@ -28,7 +28,7 @@ fn main() {
     // Allow us to share the texture with egui:
     let glium_texture = std::rc::Rc::new(glium_texture);
     // Allocate egui's texture id for GL texture
-    let texture_id = egui_glium_instance
+    let texture_id = egui_glium
         .painter
         .register_native_texture(Rc::clone(&glium_texture), Default::default());
 
@@ -36,7 +36,7 @@ fn main() {
     let button_image_size = egui::vec2(32_f32, 32_f32);
 
     let mut app = App {
-        egui_glium_instance,
+        egui_glium,
         _glium_texture: glium_texture,
         texture_id,
         image_size,
@@ -50,7 +50,7 @@ fn main() {
 }
 
 struct App {
-    egui_glium_instance: egui_glium::EguiGlium,
+    egui_glium: egui_glium::EguiGlium,
     _glium_texture: Rc<SrgbTexture2d>,
     texture_id: TextureId,
     image_size: Vec2,
@@ -66,7 +66,7 @@ impl ApplicationHandler for App {
         let mut redraw = || {
             let mut quit = false;
 
-            self.egui_glium_instance.run(&self.window, |egui_ctx| {
+            self.egui_glium.run(&self.window, |egui_ctx| {
                 egui::SidePanel::left("my_side_panel").show(egui_ctx, |ui| {
                     if ui
                         .add(egui::Button::image_and_text(
@@ -96,7 +96,7 @@ impl ApplicationHandler for App {
 
                 // draw things behind egui here
 
-                self.egui_glium_instance.paint(&self.display, &mut target);
+                self.egui_glium.paint(&self.display, &mut target);
 
                 // draw things on top of egui here
 
@@ -114,7 +114,7 @@ impl ApplicationHandler for App {
             _ => {}
         }
 
-        let event_response = self.egui_glium_instance.on_event(&self.window, &event);
+        let event_response = self.egui_glium.on_event(&self.window, &event);
 
         if event_response.repaint {
             self.window.request_redraw();
