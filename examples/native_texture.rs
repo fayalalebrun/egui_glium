@@ -13,22 +13,18 @@ use winit::{
 };
 
 fn main() {
-    let event_loop = EventLoop::<()>::with_user_event().build().unwrap();
+    let event_loop = EventLoop::new().unwrap();
 
-    let (window, glium_display) = SimpleWindowBuilder::new()
-        .set_window_builder(Window::default_attributes().with_resizable(true))
-        .with_inner_size(800, 600)
-        .with_title("egui_glium example")
-        .build(&event_loop);
+    let (window, display) = create_display(&event_loop);
 
     let mut egui_glium_instance =
-        egui_glium::EguiGlium::new(ViewportId::ROOT, &glium_display, &window, &event_loop);
+        egui_glium::EguiGlium::new(ViewportId::ROOT, &display, &window, &event_loop);
 
     let png_data = include_bytes!("rust-logo-256x256.png");
     let image = load_glium_image(png_data);
     let image_size = egui::vec2(image.width as f32, image.height as f32);
     // Load to gpu memory
-    let glium_texture = glium::texture::SrgbTexture2d::new(&glium_display, image).unwrap();
+    let glium_texture = glium::texture::SrgbTexture2d::new(&display, image).unwrap();
     // Allow us to share the texture with egui:
     let glium_texture = std::rc::Rc::new(glium_texture);
     // Allocate egui's texture id for GL texture
@@ -45,7 +41,7 @@ fn main() {
         texture_id,
         image_size,
         window,
-        display: glium_display,
+        display,
         button_image_size,
     };
 
@@ -130,6 +126,16 @@ impl ApplicationHandler for App {
             self.window.request_redraw();
         }
     }
+}
+
+fn create_display(
+    event_loop: &EventLoop<()>,
+) -> (winit::window::Window, glium::Display<WindowSurface>) {
+    SimpleWindowBuilder::new()
+        .set_window_builder(Window::default_attributes().with_resizable(true))
+        .with_inner_size(800, 600)
+        .with_title("egui_glium example")
+        .build(event_loop)
 }
 
 fn load_glium_image(png_data: &[u8]) -> glium::texture::RawImage2d<'_, u8> {

@@ -12,23 +12,19 @@ use winit::{
 };
 
 fn main() {
-    let event_loop = EventLoop::<()>::with_user_event().build().unwrap();
+    let event_loop = EventLoop::new().unwrap();
 
-    let (window, glium_display) = SimpleWindowBuilder::new()
-        .set_window_builder(Window::default_attributes().with_resizable(true))
-        .with_inner_size(800, 600)
-        .with_title("egui_glium example")
-        .build(&event_loop);
+    let (window, display) = create_display(&event_loop);
 
     let egui_glium_instance =
-        egui_glium::EguiGlium::new(ViewportId::ROOT, &glium_display, &window, &event_loop);
+        egui_glium::EguiGlium::new(ViewportId::ROOT, &display, &window, &event_loop);
 
     let color_test = egui_demo_lib::ColorTest::default();
 
     let mut app = App {
         egui_glium_instance,
         window,
-        display: glium_display,
+        display,
         color_test,
     };
 
@@ -108,4 +104,14 @@ impl ApplicationHandler for App {
             self.window.request_redraw();
         }
     }
+}
+
+fn create_display(
+    event_loop: &EventLoop<()>,
+) -> (winit::window::Window, glium::Display<WindowSurface>) {
+    SimpleWindowBuilder::new()
+        .set_window_builder(Window::default_attributes().with_resizable(true))
+        .with_inner_size(800, 600)
+        .with_title("egui_glium example")
+        .build(event_loop)
 }
