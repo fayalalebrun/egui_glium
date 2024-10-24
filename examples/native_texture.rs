@@ -15,11 +15,37 @@ use winit::{
 fn main() {
     let event_loop = EventLoop::<()>::with_user_event().build().unwrap();
 
+    let (window, glium_display) = SimpleWindowBuilder::new()
+        .set_window_builder(Window::default_attributes().with_resizable(true))
+        .with_inner_size(800, 600)
+        .with_title("egui_glium example")
+        .build(&event_loop);
+
+    let mut egui_glium_instance =
+        egui_glium::EguiGlium::new(ViewportId::ROOT, &glium_display, &window, &event_loop);
+
+    let png_data = include_bytes!("rust-logo-256x256.png");
+    let image = load_glium_image(png_data);
+    let image_size = egui::vec2(image.width as f32, image.height as f32);
+    // Load to gpu memory
+    let glium_texture = glium::texture::SrgbTexture2d::new(&glium_display, image).unwrap();
+    // Allow us to share the texture with egui:
+    let glium_texture = std::rc::Rc::new(glium_texture);
+    // Allocate egui's texture id for GL texture
+    let texture_id = egui_glium_instance
+        .painter
+        .register_native_texture(Rc::clone(&glium_texture), Default::default());
+
     // Setup button image size for reasonable image size for button container.
     let button_image_size = egui::vec2(32_f32, 32_f32);
 
     let mut app = App {
-        graphics_context: None,
+        egui_glium_instance,
+        _glium_texture: glium_texture,
+        texture_id,
+        image_size,
+        window,
+        display: glium_display,
         button_image_size,
     };
 
@@ -28,96 +54,53 @@ fn main() {
 }
 
 struct App {
-    graphics_context: Option<GraphicsContext>,
-    button_image_size: Vec2,
-}
-
-struct GraphicsContext {
     egui_glium_instance: egui_glium::EguiGlium,
     _glium_texture: Rc<SrgbTexture2d>,
     texture_id: TextureId,
     image_size: Vec2,
     window: winit::window::Window,
     display: glium::Display<WindowSurface>,
+    button_image_size: Vec2,
 }
 
 impl ApplicationHandler for App {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let (window, glium_display) = SimpleWindowBuilder::new()
-            .set_window_builder(Window::default_attributes().with_resizable(true))
-            .with_inner_size(800, 600)
-            .with_title("egui_glium example")
-            .build(event_loop);
-
-        let mut egui_glium_instance =
-            egui_glium::EguiGlium::new(ViewportId::ROOT, &glium_display, &window, event_loop);
-
-        let png_data = include_bytes!("rust-logo-256x256.png");
-        let image = load_glium_image(png_data);
-        let image_size = egui::vec2(image.width as f32, image.height as f32);
-        // Load to gpu memory
-        let glium_texture = glium::texture::SrgbTexture2d::new(&glium_display, image).unwrap();
-        // Allow us to share the texture with egui:
-        let glium_texture = std::rc::Rc::new(glium_texture);
-        // Allocate egui's texture id for GL texture
-        let texture_id = egui_glium_instance
-            .painter
-            .register_native_texture(Rc::clone(&glium_texture), Default::default());
-
-        self.graphics_context = Some(GraphicsContext {
-            egui_glium_instance,
-            _glium_texture: glium_texture,
-            texture_id,
-            image_size,
-            window,
-            display: glium_display,
-        });
-    }
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         let mut redraw = || {
             let mut quit = false;
 
-            if let Some(graphics_context) = &mut self.graphics_context {
-                graphics_context
-                    .egui_glium_instance
-                    .run(&graphics_context.window, |egui_ctx| {
-                        egui::SidePanel::left("my_side_panel").show(egui_ctx, |ui| {
-                            if ui
-                                .add(egui::Button::image_and_text(
-                                    (graphics_context.texture_id, self.button_image_size),
-                                    "Quit",
-                                ))
-                                .clicked()
-                            {
-                                quit = true;
-                            }
-                        });
-                        egui::Window::new("NativeTextureDisplay").show(egui_ctx, |ui| {
-                            ui.image(SizedTexture::new(
-                                graphics_context.texture_id,
-                                graphics_context.image_size,
-                            ));
-                        });
-                    });
-            }
+            self.egui_glium_instance.run(&self.window, |egui_ctx| {
+                egui::SidePanel::left("my_side_panel").show(egui_ctx, |ui| {
+                    if ui
+                        .add(egui::Button::image_and_text(
+                            (self.texture_id, self.button_image_size),
+                            "Quit",
+                        ))
+                        .clicked()
+                    {
+                        quit = true;
+                    }
+                });
+                egui::Window::new("NativeTextureDisplay").show(egui_ctx, |ui| {
+                    ui.image(SizedTexture::new(self.texture_id, self.image_size));
+                });
+            });
 
             if quit {
                 event_loop.exit()
             }
 
-            if let Some(graphics_context) = &mut self.graphics_context {
+            {
                 use glium::Surface as _;
-                let mut target = graphics_context.display.draw();
+                let mut target = self.display.draw();
 
                 let color = egui::Rgba::from_rgb(0.1, 0.3, 0.2);
                 target.clear_color(color[0], color[1], color[2], color[3]);
 
                 // draw things behind egui here
 
-                graphics_context
-                    .egui_glium_instance
-                    .paint(&graphics_context.display, &mut target);
+                self.egui_glium_instance.paint(&self.display, &mut target);
 
                 // draw things on top of egui here
 
@@ -129,30 +112,22 @@ impl ApplicationHandler for App {
         match &event {
             WindowEvent::CloseRequested | WindowEvent::Destroyed => event_loop.exit(),
             WindowEvent::Resized(new_size) => {
-                if let Some(graphics_context) = &mut self.graphics_context {
-                    graphics_context.display.resize((*new_size).into());
-                }
+                self.display.resize((*new_size).into());
             }
             WindowEvent::RedrawRequested => redraw(),
             _ => {}
         }
 
-        if let Some(graphics_context) = &mut self.graphics_context {
-            let event_response = graphics_context
-                .egui_glium_instance
-                .on_event(&graphics_context.window, &event);
+        let event_response = self.egui_glium_instance.on_event(&self.window, &event);
 
-            if event_response.repaint {
-                graphics_context.window.request_redraw();
-            }
+        if event_response.repaint {
+            self.window.request_redraw();
         }
     }
 
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
         if let StartCause::ResumeTimeReached { .. } = cause {
-            if let Some(graphics_context) = &mut self.graphics_context {
-                graphics_context.window.request_redraw();
-            }
+            self.window.request_redraw();
         }
     }
 }
