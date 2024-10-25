@@ -1,11 +1,20 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use egui::{load::SizedTexture, ViewportId};
-use glium::{backend::glutin::SimpleWindowBuilder, glutin::surface::WindowSurface};
-use winit::event_loop::{EventLoop, EventLoopBuilder};
+use egui::{load::SizedTexture, TextureId, Vec2, ViewportId};
+use glium::{
+    backend::glutin::SimpleWindowBuilder, glutin::surface::WindowSurface, texture::SrgbTexture2d,
+};
+use std::rc::Rc;
+use winit::{
+    application::ApplicationHandler,
+    event::{StartCause, WindowEvent},
+    event_loop::{ActiveEventLoop, EventLoop},
+    window::{Window, WindowId},
+};
 
 fn main() {
-    let event_loop = EventLoopBuilder::with_user_event().build().unwrap();
+    let event_loop = EventLoop::new().unwrap();
+
     let (window, display) = create_display(&event_loop);
 
     let mut egui_glium =
@@ -21,19 +30,47 @@ fn main() {
     // Allocate egui's texture id for GL texture
     let texture_id = egui_glium
         .painter
-        .register_native_texture(glium_texture, Default::default());
+        .register_native_texture(Rc::clone(&glium_texture), Default::default());
+
     // Setup button image size for reasonable image size for button container.
     let button_image_size = egui::vec2(32_f32, 32_f32);
 
-    let result = event_loop.run(move |event, target| {
+    let mut app = App {
+        egui_glium,
+        _glium_texture: glium_texture,
+        texture_id,
+        image_size,
+        window,
+        display,
+        button_image_size,
+    };
+
+    let result = event_loop.run_app(&mut app);
+    result.unwrap()
+}
+
+struct App {
+    egui_glium: egui_glium::EguiGlium,
+    _glium_texture: Rc<SrgbTexture2d>,
+    texture_id: TextureId,
+    image_size: Vec2,
+    window: winit::window::Window,
+    display: glium::Display<WindowSurface>,
+    button_image_size: Vec2,
+}
+
+impl ApplicationHandler for App {
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
+
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         let mut redraw = || {
             let mut quit = false;
 
-            egui_glium.run(&window, |egui_ctx| {
+            self.egui_glium.run(&self.window, |egui_ctx| {
                 egui::SidePanel::left("my_side_panel").show(egui_ctx, |ui| {
                     if ui
                         .add(egui::Button::image_and_text(
-                            (texture_id, button_image_size),
+                            (self.texture_id, self.button_image_size),
                             "Quit",
                         ))
                         .clicked()
@@ -42,24 +79,24 @@ fn main() {
                     }
                 });
                 egui::Window::new("NativeTextureDisplay").show(egui_ctx, |ui| {
-                    ui.image(SizedTexture::new(texture_id, image_size));
+                    ui.image(SizedTexture::new(self.texture_id, self.image_size));
                 });
             });
 
             if quit {
-                target.exit()
+                event_loop.exit()
             }
 
             {
                 use glium::Surface as _;
-                let mut target = display.draw();
+                let mut target = self.display.draw();
 
                 let color = egui::Rgba::from_rgb(0.1, 0.3, 0.2);
                 target.clear_color(color[0], color[1], color[2], color[3]);
 
                 // draw things behind egui here
 
-                egui_glium.paint(&display, &mut target);
+                self.egui_glium.paint(&self.display, &mut target);
 
                 // draw things on top of egui here
 
@@ -67,42 +104,35 @@ fn main() {
             }
         };
 
-        match event {
-            winit::event::Event::WindowEvent { event, .. } => {
-                use winit::event::WindowEvent;
-                match &event {
-                    WindowEvent::CloseRequested | WindowEvent::Destroyed => target.exit(),
-                    WindowEvent::Resized(new_size) => {
-                        display.resize((*new_size).into());
-                    }
-                    WindowEvent::RedrawRequested => redraw(),
-                    _ => {}
-                }
-
-                let event_response = egui_glium.on_event(&window, &event);
-
-                if event_response.repaint {
-                    window.request_redraw();
-                }
+        use winit::event::WindowEvent;
+        match &event {
+            WindowEvent::CloseRequested | WindowEvent::Destroyed => event_loop.exit(),
+            WindowEvent::Resized(new_size) => {
+                self.display.resize((*new_size).into());
             }
-
-            winit::event::Event::NewEvents(winit::event::StartCause::ResumeTimeReached {
-                ..
-            }) => {
-                window.request_redraw();
-            }
-
-            _ => (),
+            WindowEvent::RedrawRequested => redraw(),
+            _ => {}
         }
-    });
-    result.unwrap()
+
+        let event_response = self.egui_glium.on_event(&self.window, &event);
+
+        if event_response.repaint {
+            self.window.request_redraw();
+        }
+    }
+
+    fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
+        if let StartCause::ResumeTimeReached { .. } = cause {
+            self.window.request_redraw();
+        }
+    }
 }
 
 fn create_display(
     event_loop: &EventLoop<()>,
 ) -> (winit::window::Window, glium::Display<WindowSurface>) {
     SimpleWindowBuilder::new()
-        .set_window_builder(winit::window::WindowBuilder::new().with_resizable(true))
+        .set_window_builder(Window::default_attributes().with_resizable(true))
         .with_inner_size(800, 600)
         .with_title("egui_glium example")
         .build(event_loop)

@@ -5,24 +5,47 @@
 use egui::ViewportId;
 use glium::{backend::glutin::SimpleWindowBuilder, glutin::surface::WindowSurface};
 use winit::{
-    event,
-    event_loop::{EventLoop, EventLoopBuilder},
+    application::ApplicationHandler,
+    event::{StartCause, WindowEvent},
+    event_loop::{ActiveEventLoop, EventLoop},
+    window::{Window, WindowId},
 };
 
 fn main() {
-    let event_loop = EventLoopBuilder::with_user_event().build().unwrap();
+    let event_loop = EventLoop::new().unwrap();
+
     let (window, display) = create_display(&event_loop);
 
-    let mut egui_glium =
-        egui_glium::EguiGlium::new(ViewportId::ROOT, &display, &window, &event_loop);
+    let egui_glium = egui_glium::EguiGlium::new(ViewportId::ROOT, &display, &window, &event_loop);
 
-    let mut color_test = egui_demo_lib::ColorTest::default();
+    let color_test = egui_demo_lib::ColorTest::default();
 
-    let result = event_loop.run(move |event, target| {
+    let mut app = App {
+        egui_glium,
+        window,
+        display,
+        color_test,
+    };
+
+    let result = event_loop.run_app(&mut app);
+    result.unwrap()
+}
+
+struct App {
+    egui_glium: egui_glium::EguiGlium,
+    window: winit::window::Window,
+    display: glium::Display<WindowSurface>,
+    color_test: egui_demo_lib::ColorTest,
+}
+
+impl ApplicationHandler for App {
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
+
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         let mut redraw = || {
             let mut quit = false;
 
-            egui_glium.run(&window, |egui_ctx| {
+            self.egui_glium.run(&self.window, |egui_ctx| {
                 egui::SidePanel::left("my_side_panel").show(egui_ctx, |ui| {
                     ui.heading("Hello World!");
                     if ui.button("Quit").clicked() {
@@ -32,25 +55,25 @@ fn main() {
 
                 egui::CentralPanel::default().show(egui_ctx, |ui| {
                     egui::ScrollArea::vertical().show(ui, |ui| {
-                        color_test.ui(ui);
+                        self.color_test.ui(ui);
                     });
                 });
             });
 
             if quit {
-                target.exit()
+                event_loop.exit()
             }
 
             {
                 use glium::Surface as _;
-                let mut target = display.draw();
+                let mut target = self.display.draw();
 
                 let color = egui::Rgba::from_rgb(0.1, 0.3, 0.2);
                 target.clear_color(color[0], color[1], color[2], color[3]);
 
                 // draw things behind egui here
 
-                egui_glium.paint(&display, &mut target);
+                self.egui_glium.paint(&self.display, &mut target);
 
                 // draw things on top of egui here
 
@@ -58,38 +81,35 @@ fn main() {
             }
         };
 
-        match event {
-            event::Event::WindowEvent { event, .. } => {
-                use event::WindowEvent;
-                match &event {
-                    WindowEvent::CloseRequested | WindowEvent::Destroyed => target.exit(),
-                    WindowEvent::Resized(new_size) => {
-                        display.resize((*new_size).into());
-                    }
-                    WindowEvent::RedrawRequested => redraw(),
-                    _ => {}
-                }
-
-                let event_response = egui_glium.on_event(&window, &event);
-
-                if event_response.repaint {
-                    window.request_redraw();
-                }
+        use winit::event::WindowEvent;
+        match &event {
+            WindowEvent::CloseRequested | WindowEvent::Destroyed => event_loop.exit(),
+            WindowEvent::Resized(new_size) => {
+                self.display.resize((*new_size).into());
             }
-            event::Event::NewEvents(event::StartCause::ResumeTimeReached { .. }) => {
-                window.request_redraw();
-            }
-            _ => (),
+            WindowEvent::RedrawRequested => redraw(),
+            _ => {}
         }
-    });
-    result.unwrap()
+
+        let event_response = self.egui_glium.on_event(&self.window, &event);
+
+        if event_response.repaint {
+            self.window.request_redraw();
+        }
+    }
+
+    fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
+        if let StartCause::ResumeTimeReached { .. } = cause {
+            self.window.request_redraw();
+        }
+    }
 }
 
 fn create_display(
     event_loop: &EventLoop<()>,
 ) -> (winit::window::Window, glium::Display<WindowSurface>) {
     SimpleWindowBuilder::new()
-        .set_window_builder(winit::window::WindowBuilder::new().with_resizable(true))
+        .set_window_builder(Window::default_attributes().with_resizable(true))
         .with_inner_size(800, 600)
         .with_title("egui_glium example")
         .build(event_loop)
