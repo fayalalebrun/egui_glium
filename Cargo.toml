@@ -1,6 +1,6 @@
 [package]
 name = "egui_glium"
-version = "0.31.1"
+version = "0.33.2"
 authors = ["Emil Ernerfeldt <emil.ernerfeldt@gmail.com>"]
 description = "Bindings for using egui natively using the glium library"
 edition = "2021"
@@ -29,11 +29,11 @@ links = ["egui-winit/links"]
 
 
 [dependencies]
-egui = { version = "0.31.1", default-features = false, features = [
+egui = { version = "0.33.2", default-features = false, features = [
   "bytemuck",
   "default_fonts"
 ] }
-egui-winit = { version = "0.31.1", default-features = false }
+egui-winit = { version = "0.33.2", default-features = false }
 
 ahash = { version = "0.8", default-features = false, features = [
   "no-rng", # we don't need DOS-protection, so we let users opt-in to it instead
@@ -51,5 +51,5 @@ document-features = { version = "0.2", optional = true }
 
 
 [dev-dependencies]
-egui_demo_lib = { version = "0.31.1", default-features = false }
+egui_demo_lib = { version = "0.33.2", default-features = false }
 image = { version = "0.24", default-features = false, features = ["png"] }
